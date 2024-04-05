@@ -1,5 +1,5 @@
 {
-  description = "qestor ansible playbook";
+  description = "Amazon AWS Ansible Collection";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
@@ -11,29 +11,41 @@
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        overlays = [
+          ( final: prev: {
+            ansible-locale-archive = prev.ansible.overrideAttrs (old: rec {
+              name = "${pname}-${old.version}";
+              pname = "ansible-locale-archive";
+              patches = (old.patches or [ ]) ++ [
+                ./ansible-locale-archive.patch
+              ];
+            }); 
+          })
+        ];
       };
       devEnv = (pkgs.buildFHSUserEnv {
-        name = "qestor";
+        name = "amazon.aws";
         targetPkgs = pkgs: (with pkgs; [
           micromamba
           just
-          vscodium
+          ansible-locale-archive
+          zsh
         ]);
         runScript = "zsh";
 
         profile = ''
-        export LC_ALL="C.UTF-8"
         eval "$(micromamba shell hook -s posix)"
         export MAMBA_ROOT_PREFIX=./.mamba
-        if [[ ! -d ".mamba/envs/qestor" ]]; then
+        if [[ ! -d ".mamba/envs/amazon_aws" ]]; then
           echo 'Creating environment'
-          micromamba create -q -n qestor
+          micromamba create -q -n amazon_aws -y -c conda-forge python="3.11"
         fi
         echo 'Activating environment'
-        micromamba activate qestor -q
+        micromamba activate amazon_aws -q
         echo 'Installing requirements'
         micromamba install --yes -c conda-forge -f requirements.txt -q
-        micromamba install --yes -c conda-forge -f test-requirements.txt -q
+        pip install MonkeyType -q
+        pip install -r test-requirements.txt -q
         '';
 
 
