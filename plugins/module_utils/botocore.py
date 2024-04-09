@@ -36,6 +36,10 @@ connections.
 import json
 import os
 import traceback
+from boto3.session import Session
+from botocore.config import Config
+from botocore.exceptions import ClientError
+from typing import List, Type, Callable, Dict, Optional, Tuple, Union
 
 BOTO3_IMP_ERR = None
 try:
@@ -68,7 +72,7 @@ MINIMUM_BOTOCORE_VERSION = "1.29.0"
 MINIMUM_BOTO3_VERSION = "1.26.0"
 
 
-def _get_user_agent_string():
+def _get_user_agent_string() -> str:
     info = get_collection_info()
     result = f"APN/1.0 Ansible/{__version__}"
     if info["name"]:
@@ -79,7 +83,7 @@ def _get_user_agent_string():
     return result
 
 
-def boto3_conn(module, conn_type=None, resource=None, region=None, endpoint=None, **params):
+def boto3_conn(module, conn_type: Optional[str]=None, resource: Optional[str]=None, region: Optional[str]=None, endpoint: None=None, **params):
     """
     Builds a boto3 resource/client connection cleanly wrapping the most common failures.
     Handles:
@@ -110,7 +114,7 @@ def boto3_conn(module, conn_type=None, resource=None, region=None, endpoint=None
         )
 
 
-def _merge_botocore_config(config_a, config_b):
+def _merge_botocore_config(config_a: Config, config_b: None) -> Config:
     """
     Merges the extra configuration options from config_b into config_a.
     Supports both botocore.config.Config objects and dicts
@@ -122,7 +126,7 @@ def _merge_botocore_config(config_a, config_b):
     return config_a.merge(config_b)
 
 
-def _boto3_conn(conn_type=None, resource=None, region=None, endpoint=None, **params):
+def _boto3_conn(conn_type: Optional[str]=None, resource: Optional[str]=None, region: Optional[str]=None, endpoint: None=None, **params):
     """
     Builds a boto3 resource/client connection cleanly wrapping the most common failures.
     No exceptions are caught/handled.
@@ -183,7 +187,7 @@ def boto_exception(err):
     return error
 
 
-def _aws_region(params):
+def _aws_region(params: Dict[str, Optional[Union[str, Dict[str, bool], bool]]]) -> str:
     region = params.get("region")
 
     if region:
@@ -202,14 +206,7 @@ def _aws_region(params):
         return None
 
 
-def get_aws_region(module, boto3=None):  # pylint: disable=redefined-outer-name
-    if boto3 is not None:
-        module.deprecate(
-            "get_aws_region(): the boto3 parameter will be removed in a release after 2025-05-01. "
-            "The parameter has been ignored since release 4.0.0.",
-            date="2025-05-01",
-            collection_name="amazon.aws",
-        )
+def get_aws_region(module, boto3: Optional[bool]=None) -> str:
     try:
         return _aws_region(module.params)
     except AnsibleBotocoreError as e:
@@ -219,7 +216,7 @@ def get_aws_region(module, boto3=None):  # pylint: disable=redefined-outer-name
             module.fail_json(msg=e.message)
 
 
-def _aws_connection_info(params):
+def _aws_connection_info(params: Dict[str, Optional[Union[str, Dict[str, bool], bool]]]) -> Tuple[str, None, Dict[str, Optional[Union[str, bool]]]]:
     endpoint_url = params.get("endpoint_url")
     access_key = params.get("access_key")
     secret_key = params.get("secret_key")
@@ -273,14 +270,7 @@ def _aws_connection_info(params):
     return region, endpoint_url, boto_params
 
 
-def get_aws_connection_info(module, boto3=None):  # pylint: disable=redefined-outer-name
-    if boto3 is not None:
-        module.deprecate(
-            "get_aws_connection_info(): the boto3 parameter will be removed in a release after 2025-05-01. "
-            "The parameter has been ignored since release 4.0.0.",
-            date="2025-05-01",
-            collection_name="amazon.aws",
-        )
+def get_aws_connection_info(module, boto3: Optional[bool]=None) -> Tuple[str, None, Dict[str, Optional[Union[str, bool]]]]:
     try:
         return _aws_connection_info(module.params)
     except AnsibleBotocoreError as e:
@@ -315,7 +305,7 @@ def paginated_query_with_retries(client, paginator_name, retry_decorator=None, *
     return result
 
 
-def gather_sdk_versions():
+def gather_sdk_versions() -> Dict[str, str]:
     """Gather AWS SDK (boto3 and botocore) dependency versions
 
     Returns {'boto3_version': str, 'botocore_version': str}
@@ -330,7 +320,7 @@ def gather_sdk_versions():
     )
 
 
-def is_boto3_error_code(code, e=None):
+def is_boto3_error_code(code: Union[str, List[str]], e: None=None) -> Union[Type[ClientError], Type[None]]:
     """Check if the botocore exception is raised by a specific error code.
 
     Returns ClientError if the error code matches, a dummy exception if it does not have an error code or does not match
@@ -411,7 +401,7 @@ def normalize_boto3_result(result):
     return json.loads(json.dumps(result, default=_boto3_handler))
 
 
-def enable_placebo(session):
+def enable_placebo(session: Session) -> None:
     """
     Helper to record or replay offline modules for testing purpose.
     """
@@ -443,7 +433,7 @@ def enable_placebo(session):
         pill.playback()
 
 
-def check_sdk_version_supported(botocore_version=None, boto3_version=None, warn=None):
+def check_sdk_version_supported(botocore_version: None=None, boto3_version: None=None, warn: Optional[Callable]=None) -> bool:
     """Checks to see if the available boto3 / botocore versions are supported
     args:
         botocore_version: (str) overrides the minimum version of botocore supported by the collection
@@ -481,13 +471,13 @@ def check_sdk_version_supported(botocore_version=None, boto3_version=None, warn=
     return supported
 
 
-def _version_at_least(a, b):
+def _version_at_least(a: str, b: str) -> bool:
     if not HAS_PACKAGING:
         return True
     return Version(a) >= Version(b)
 
 
-def boto3_at_least(desired):
+def boto3_at_least(desired: str) -> bool:
     """Check if the available boto3 version is greater than or equal to a desired version.
 
     Usage:
@@ -499,7 +489,7 @@ def boto3_at_least(desired):
     return _version_at_least(existing["boto3_version"], desired)
 
 
-def botocore_at_least(desired):
+def botocore_at_least(desired: str) -> bool:
     """Check if the available botocore version is greater than or equal to a desired version.
 
     Usage:

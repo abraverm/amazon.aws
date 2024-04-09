@@ -4,6 +4,11 @@
 # Copyright: Contributors to the Ansible project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from mypy_boto3_s3 import S3Client
+from ansible_collections.amazon.aws.plugins.module_utils.modules import AnsibleAWSModule
+from ansible_collections.amazon.aws.plugins.module_utils.retries import RetryingBotoClientWrapper
+from typing import Dict, List, Optional, Union
+
 DOCUMENTATION = r"""
 ---
 module: s3_bucket
@@ -1703,7 +1708,7 @@ def destroy_bucket(s3_client, module: AnsibleAWSModule) -> None:
     module.exit_json(changed=True)
 
 
-def main():
+def main() -> None:
     argument_spec = dict(
         force=dict(default=False, type="bool"),
         policy=dict(type="json"),

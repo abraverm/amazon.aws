@@ -30,6 +30,8 @@
 import functools
 import random
 import time
+from typing import Any, Callable, Dict, List, Optional, Type
+from botocore.exceptions import ClientError
 
 
 class BackoffIterator:
@@ -41,17 +43,17 @@ class BackoffIterator:
         jitter (bool): if set to true, add jitter to the generate value.
     """
 
-    def __init__(self, delay, backoff, max_delay=None, jitter=False):
+    def __init__(self, delay: int, backoff: float, max_delay: Optional[int]=None, jitter: bool=False) -> None:
         self.delay = delay
         self.backoff = backoff
         self.max_delay = max_delay
         self.jitter = jitter
 
-    def __iter__(self):
+    def __iter__(self) -> "BackoffIterator":
         self.current_delay = self.delay
         return self
 
-    def __next__(self):
+    def __next__(self) -> float:
         return_value = self.current_delay if self.max_delay is None else min(self.current_delay, self.max_delay)
         if self.jitter:
             return_value = random.uniform(0.0, return_value)
@@ -60,8 +62,8 @@ class BackoffIterator:
 
 
 def _retry_func(
-    func, sleep_time_generator, retries, catch_extra_error_codes, found_f, status_code_from_except_f, base_class
-):
+    func: functools.partial, sleep_time_generator: BackoffIterator, retries: int, catch_extra_error_codes: List[str], found_f: Callable, status_code_from_except_f: Callable, base_class: Type[ClientError]
+) -> Dict[str, Any]:
     counter = 0
     for sleep_time in sleep_time_generator:
         try:
@@ -111,7 +113,7 @@ class CloudRetry:
         return _is_iterable() and response_code in catch_extra_error_codes
 
     @classmethod
-    def base_decorator(cls, retries, found, status_code_from_exception, catch_extra_error_codes, sleep_time_generator):
+    def base_decorator(cls, retries: int, found: Callable, status_code_from_exception: Callable, catch_extra_error_codes: List[str], sleep_time_generator: BackoffIterator) -> Callable:
         def retry_decorator(func):
             @functools.wraps(func)
             def _retry_wrapper(*args, **kwargs):
@@ -131,7 +133,7 @@ class CloudRetry:
         return retry_decorator
 
     @classmethod
-    def exponential_backoff(cls, retries=10, delay=3, backoff=2, max_delay=60, catch_extra_error_codes=None):
+    def exponential_backoff(cls, retries: int=10, delay: int=3, backoff: int=2, max_delay: int=60, catch_extra_error_codes: Optional[List[str]]=None) -> Callable:
         """Wrap a callable with retry behavior.
         Args:
             retries (int): Number of times to retry a failed request before giving up
@@ -157,7 +159,7 @@ class CloudRetry:
         )
 
     @classmethod
-    def jittered_backoff(cls, retries=10, delay=3, backoff=2.0, max_delay=60, catch_extra_error_codes=None):
+    def jittered_backoff(cls, retries: int=10, delay: int=3, backoff: float=2.0, max_delay: int=60, catch_extra_error_codes: Optional[List[str]]=None) -> Callable:
         """Wrap a callable with retry behavior.
         Args:
             retries (int): Number of times to retry a failed request before giving up

@@ -33,9 +33,10 @@ from functools import cmp_to_key
 from ansible.module_utils._text import to_text
 from ansible.module_utils.six import binary_type
 from ansible.module_utils.six import string_types
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
-def _canonify_root_arn(arn):
+def _canonify_root_arn(arn: str) -> str:
     # There are multiple ways to specifiy delegation of access to an account
     # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-accounts
     if arn.startswith("arn:aws:iam::") and arn.endswith(":root"):
@@ -43,7 +44,7 @@ def _canonify_root_arn(arn):
     return arn
 
 
-def _canonify_policy_dict_item(item, key):
+def _canonify_policy_dict_item(item: Any, key: str) -> Any:
     """
     Converts special cases where there are multiple ways to write the same thing into a single form
     """
@@ -55,13 +56,13 @@ def _canonify_policy_dict_item(item, key):
     return item
 
 
-def _tuplify_list(element):
+def _tuplify_list(element: Union[Tuple[Tuple[str, Tuple[str]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str, Tuple[str]]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str]]], List[str], List[Union[Tuple[str, Tuple[str]], Tuple[str, Tuple[str, Tuple[str]]]]], Tuple[str], Tuple[str, Tuple[str]]]) -> Union[Tuple[str, Tuple[str]], Tuple[str], Tuple[Tuple[str, Tuple[str]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str, Tuple[str]]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str]]]]:
     if isinstance(element, list):
         return tuple(element)
     return element
 
 
-def _hashable_policy(policy, policy_list):
+def _hashable_policy(policy: Any, policy_list: List[Any]) -> Any:
     """
     Takes a policy and returns a list, the contents of which are all hashable and sorted.
     Example input policy:
@@ -114,7 +115,7 @@ def _hashable_policy(policy, policy_list):
     return policy_list
 
 
-def _py3cmp(a, b):
+def _py3cmp(a: Union[Tuple[str, Tuple[str]], Tuple[str, Tuple[str, Tuple[str]]]], b: Union[Tuple[str, Tuple[Tuple[str, Tuple[str]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str, Tuple[str]]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str]]]], Tuple[str, Tuple[str]], Tuple[str, Tuple[str, Tuple[str]]]]) -> int:
     """Python 2 can sort lists of mixed types. Strings < tuples. Without this function this fails on Python 3."""
     try:
         if a > b:
@@ -136,7 +137,7 @@ def _py3cmp(a, b):
         raise
 
 
-def compare_policies(current_policy, new_policy, default_version="2008-10-17"):
+def compare_policies(current_policy: Optional[Union[Dict[str, Union[str, List[Dict[str, Union[str, Dict[str, str]]]]]], Dict[str, Union[str, List[Dict[str, str]]]]]], new_policy: Dict[str, Union[str, List[Dict[str, Union[str, Dict[str, str], List[str]]]], List[Dict[str, Union[str, List[str]]]]]], default_version: str="2008-10-17") -> bool:
     """Compares the existing policy and the updated policy
     Returns True if there is a difference between policies.
     """
