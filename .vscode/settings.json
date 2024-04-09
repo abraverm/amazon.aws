@@ -1,0 +1,32 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/.mamba/envs/amazon_aws/bin/python3.1",
+    "python.venvPath": "${workspaceFolder}/.mamba/envs",
+    "pyright.disableOrganizeImports": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportArgumentType": "warning",
+        "reportPossiblyUnboundVariable": "warning",
+        "reportAttributeAccessIssue": "warning",
+        "reportGeneralTypeIssues": "warning",
+        "reportReturnType": "warning",
+        "reportAssignmentType": "warning",
+        "reportTypedDictNotRequiredAccess":"warning",
+        "reportCallIssue": "warning",
+        "reportOptionalMemberAccess": "warning"
+    },
+    "python.analysis.enableSyncServer": false,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.inlayHints.functionReturnTypes": false,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.userFileIndexingLimit": -1,
+    "python.analysis.include": [
+        "plugins",
+        "typings"
+    ],
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.missingPackage.severity": "Error",
+    "flake8.severity": {
+        "E": "Warning"
+    },
+}
+
+// pyright reportAssignmentType=false, reportArgumentType=false
