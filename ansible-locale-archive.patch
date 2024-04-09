@@ -1,0 +1,12 @@
+diff --git a/test/lib/ansible_test/_internal/util.py b/test/lib/ansible_test/_internal/util.py
+index 394c2632d4..6631c53f7d 100644
+--- a/test/lib/ansible_test/_internal/util.py
++++ b/test/lib/ansible_test/_internal/util.py
+@@ -629,6 +629,7 @@ def common_environment() -> dict[str, str]:
+     env = dict(
+         LC_ALL=CONFIGURED_LOCALE,
+         PATH=os.environ.get('PATH', os.path.defpath),
++        LOCALE_ARCHIVE=os.environ.get('LOCALE_ARCHIVE', '/usr/lib/locale/locale-archive')
+     )
+
+     required = (
