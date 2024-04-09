@@ -29,6 +29,8 @@
 # USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from functools import wraps
+from botocore.exceptions import ClientError
+from typing import Callable, List, Optional, Type
 
 try:
     from botocore.exceptions import ClientError
@@ -40,7 +42,7 @@ except ImportError:
 from .cloud import CloudRetry
 
 
-def _botocore_exception_maybe():
+def _botocore_exception_maybe() -> Type[ClientError]:
     """
     Allow for boto3 not being installed when using these utils by wrapping
     botocore.exceptions instead of assigning from it directly.
@@ -54,11 +56,11 @@ class AWSRetry(CloudRetry):
     base_class = _botocore_exception_maybe()
 
     @staticmethod
-    def status_code_from_exception(error):
+    def status_code_from_exception(error: ClientError) -> str:
         return error.response["Error"]["Code"]
 
     @staticmethod
-    def found(response_code, catch_extra_error_codes=None):
+    def found(response_code: str, catch_extra_error_codes: Optional[List[str]]=None) -> bool:
         # This list of failures is based on this API Reference
         # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
         #
@@ -92,11 +94,11 @@ class RetryingBotoClientWrapper:
         "generate_presigned_url",
     )
 
-    def __init__(self, client, retry):
+    def __init__(self, client, retry: Callable) -> None:
         self.client = client
         self.retry = retry
 
-    def _create_optional_retry_wrapper_function(self, unwrapped):
+    def _create_optional_retry_wrapper_function(self, unwrapped: Callable) -> Callable:
         retrying_wrapper = self.retry(unwrapped)
 
         @wraps(unwrapped)
@@ -108,7 +110,7 @@ class RetryingBotoClientWrapper:
 
         return deciding_wrapper
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Callable:
         unwrapped = getattr(self.client, name)
         if name in self.__never_wait:
             return unwrapped

@@ -4,6 +4,10 @@
 # Copyright (c) 2017 Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from ansible_collections.amazon.aws.plugins.module_utils.modules import AnsibleAWSModule
+from datetime import datetime
+from typing import Any, Dict, List, Union
+
 DOCUMENTATION = r"""
 ---
 module: s3_bucket_info
@@ -426,7 +430,7 @@ from ansible_collections.amazon.aws.plugins.module_utils.retries import AWSRetry
 from ansible_collections.amazon.aws.plugins.module_utils.tagging import boto3_tag_list_to_ansible_dict
 
 
-def get_bucket_list(module, connection, name="", name_filter=""):
+def get_bucket_list(module: AnsibleAWSModule, connection, name: str="", name_filter: str="") -> List[Dict[str, Union[str, datetime]]]:
     """
     Return result of list_buckets json encoded
     Filter only buckets matching 'name' or name_filter if defined
@@ -462,7 +466,7 @@ def get_bucket_list(module, connection, name="", name_filter=""):
     return final_buckets
 
 
-def get_buckets_facts(connection, buckets, requested_facts, transform_location):
+def get_buckets_facts(connection, buckets: List[Dict[str, Union[str, datetime]]], requested_facts: Dict[str, bool], transform_location: Dict[str, bool]) -> List[Dict[str, Any]]:
     """
     Retrieve additional information about S3 buckets
     """
@@ -475,7 +479,7 @@ def get_buckets_facts(connection, buckets, requested_facts, transform_location):
     return full_bucket_list
 
 
-def get_bucket_details(connection, name, requested_facts, transform_location):
+def get_bucket_details(connection, name: str, requested_facts: Dict[str, bool], transform_location: Dict[str, bool]) -> Dict[str, Dict[str, Any]]:
     """
     Execute all enabled S3API get calls for selected bucket
     """
@@ -509,7 +513,7 @@ def get_bucket_details(connection, name, requested_facts, transform_location):
 
 
 @AWSRetry.jittered_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_location(name, connection, transform_location=False):
+def get_bucket_location(name: str, connection, transform_location: Dict[str, bool]=False) -> Dict[str, str]:
     """
     Get bucket location and optionally transform 'null' to 'us-east-1'
     """
@@ -528,7 +532,7 @@ def get_bucket_location(name, connection, transform_location=False):
 
 
 @AWSRetry.jittered_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_tagging(name, connection):
+def get_bucket_tagging(name: str, connection):
     """
     Get bucket tags and transform them using `boto3_tag_list_to_ansible_dict` function
     """
@@ -544,7 +548,7 @@ def get_bucket_tagging(name, connection):
 
 
 @AWSRetry.jittered_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_property(name, connection, get_api_name):
+def get_bucket_property(name: str, connection, get_api_name: str) -> Dict[str, Any]:
     """
     Get bucket property
     """

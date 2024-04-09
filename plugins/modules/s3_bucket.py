@@ -4,6 +4,11 @@
 # Copyright: Contributors to the Ansible project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from mypy_boto3_s3 import S3Client
+from ansible_collections.amazon.aws.plugins.module_utils.modules import AnsibleAWSModule
+from ansible_collections.amazon.aws.plugins.module_utils.retries import RetryingBotoClientWrapper
+from typing import Dict, List, Optional, Union
+
 DOCUMENTATION = r"""
 ---
 module: s3_bucket
@@ -372,7 +377,7 @@ from ansible_collections.amazon.aws.plugins.module_utils.tagging import ansible_
 from ansible_collections.amazon.aws.plugins.module_utils.tagging import boto3_tag_list_to_ansible_dict
 
 
-def create_or_update_bucket(s3_client, module):
+def create_or_update_bucket(s3_client: RetryingBotoClientWrapper, module: AnsibleAWSModule) -> None:
     policy = module.params.get("policy")
     name = module.params.get("name")
     requester_pays = module.params.get("requester_pays")
@@ -746,7 +751,7 @@ def bucket_exists(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
-def create_bucket(s3_client, bucket_name, location, object_lock_enabled=False):
+def create_bucket(s3_client: RetryingBotoClientWrapper, bucket_name: str, location: str, object_lock_enabled: Optional[bool]=False) -> bool:
     try:
         params = {"Bucket": bucket_name}
 
@@ -785,7 +790,7 @@ def delete_bucket_policy(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_policy(s3_client, bucket_name):
+def get_bucket_policy(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> Optional[Union[Dict[str, Union[str, List[Dict[str, Union[str, Dict[str, str]]]]]], Dict[str, Union[str, List[Dict[str, str]]]]]]:
     try:
         current_policy_string = s3_client.get_bucket_policy(Bucket=bucket_name).get("Policy")
         if not current_policy_string:
@@ -798,33 +803,33 @@ def get_bucket_policy(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def put_bucket_request_payment(s3_client, bucket_name, payer):
+def put_bucket_request_payment(s3_client: RetryingBotoClientWrapper, bucket_name: str, payer: str) -> None:
     s3_client.put_bucket_request_payment(Bucket=bucket_name, RequestPaymentConfiguration={"Payer": payer})
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_request_payment(s3_client, bucket_name):
+def get_bucket_request_payment(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> str:
     return s3_client.get_bucket_request_payment(Bucket=bucket_name).get("Payer")
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_versioning(s3_client, bucket_name):
+def get_bucket_versioning(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> Dict[str, Union[Dict[str, Union[str, int, Dict[str, str]]], str]]:
     return s3_client.get_bucket_versioning(Bucket=bucket_name)
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def put_bucket_versioning(s3_client, bucket_name, required_versioning):
+def put_bucket_versioning(s3_client: RetryingBotoClientWrapper, bucket_name: str, required_versioning: str) -> None:
     s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": required_versioning})
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_object_lock_enabled(s3_client, bucket_name):
+def get_bucket_object_lock_enabled(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> bool:
     object_lock_configuration = s3_client.get_object_lock_configuration(Bucket=bucket_name)
     return object_lock_configuration["ObjectLockConfiguration"]["ObjectLockEnabled"] == "Enabled"
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_encryption(s3_client, bucket_name):
+def get_bucket_encryption(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> Dict[str, str]:
     try:
         result = s3_client.get_bucket_encryption(Bucket=bucket_name)
         return (
@@ -839,7 +844,7 @@ def get_bucket_encryption(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def get_bucket_key(s3_client, bucket_name):
+def get_bucket_key(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> bool:
     try:
         result = s3_client.get_bucket_encryption(Bucket=bucket_name)
         return result.get("ServerSideEncryptionConfiguration", {}).get("Rules", [])[0].get("BucketKeyEnabled")
@@ -849,7 +854,7 @@ def get_bucket_key(s3_client, bucket_name):
         return None
 
 
-def put_bucket_encryption_with_retry(module, s3_client, name, expected_encryption):
+def put_bucket_encryption_with_retry(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, name: str, expected_encryption: Dict[str, str]) -> Dict[str, str]:
     max_retries = 3
     for retries in range(1, max_retries + 1):
         try:
@@ -877,14 +882,14 @@ def put_bucket_encryption_with_retry(module, s3_client, name, expected_encryptio
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def put_bucket_encryption(s3_client, bucket_name, encryption):
+def put_bucket_encryption(s3_client: RetryingBotoClientWrapper, bucket_name: str, encryption: Dict[str, str]) -> None:
     server_side_encryption_configuration = {"Rules": [{"ApplyServerSideEncryptionByDefault": encryption}]}
     s3_client.put_bucket_encryption(
         Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_configuration
     )
 
 
-def put_bucket_key_with_retry(module, s3_client, name, expected_encryption):
+def put_bucket_key_with_retry(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, name: str, expected_encryption: bool) -> bool:
     max_retries = 3
     for retries in range(1, max_retries + 1):
         try:
@@ -909,7 +914,7 @@ def put_bucket_key_with_retry(module, s3_client, name, expected_encryption):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def put_bucket_key(s3_client, bucket_name, encryption):
+def put_bucket_key(s3_client: RetryingBotoClientWrapper, bucket_name: str, encryption: bool) -> None:
     # server_side_encryption_configuration ={'Rules': [{'BucketKeyEnabled': encryption}]}
     encryption_status = s3_client.get_bucket_encryption(Bucket=bucket_name)
     encryption_status["ServerSideEncryptionConfiguration"]["Rules"][0]["BucketKeyEnabled"] = encryption
@@ -919,7 +924,7 @@ def put_bucket_key(s3_client, bucket_name, encryption):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def delete_bucket_tagging(s3_client, bucket_name):
+def delete_bucket_tagging(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> None:
     s3_client.delete_bucket_tagging(Bucket=bucket_name)
 
 
@@ -929,7 +934,7 @@ def delete_bucket_encryption(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=240, catch_extra_error_codes=["OperationAborted"])
-def delete_bucket(s3_client, bucket_name):
+def delete_bucket(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> None:
     try:
         s3_client.delete_bucket(Bucket=bucket_name)
     except is_boto3_error_code("NoSuchBucket"):
@@ -939,7 +944,7 @@ def delete_bucket(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def put_bucket_public_access(s3_client, bucket_name, public_acces):
+def put_bucket_public_access(s3_client: RetryingBotoClientWrapper, bucket_name: str, public_acces: Dict[str, bool]) -> None:
     """
     Put new public access block to S3 bucket
     """
@@ -947,7 +952,7 @@ def put_bucket_public_access(s3_client, bucket_name, public_acces):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def delete_bucket_public_access(s3_client, bucket_name):
+def delete_bucket_public_access(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> None:
     """
     Delete public access block from S3 bucket
     """
@@ -955,7 +960,7 @@ def delete_bucket_public_access(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def delete_bucket_ownership(s3_client, bucket_name):
+def delete_bucket_ownership(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> None:
     """
     Delete bucket ownership controls from S3 bucket
     """
@@ -963,7 +968,7 @@ def delete_bucket_ownership(s3_client, bucket_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
-def put_bucket_ownership(s3_client, bucket_name, target):
+def put_bucket_ownership(s3_client: RetryingBotoClientWrapper, bucket_name: str, target: str) -> None:
     """
     Put bucket ownership controls for S3 bucket
     """
@@ -972,7 +977,7 @@ def put_bucket_ownership(s3_client, bucket_name, target):
     )
 
 
-def wait_policy_is_applied(module, s3_client, bucket_name, expected_policy, should_fail=True):
+def wait_policy_is_applied(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, bucket_name: str, expected_policy: Dict[str, Union[str, List[Dict[str, Union[str, Dict[str, str], List[str]]]], List[Dict[str, Union[str, List[str]]]]]], should_fail: bool=True) -> Dict[str, Union[str, List[Dict[str, Union[str, Dict[str, str]]]], List[Dict[str, str]]]]:
     for dummy in range(0, 12):
         try:
             current_policy = get_bucket_policy(s3_client, bucket_name)
@@ -993,7 +998,7 @@ def wait_policy_is_applied(module, s3_client, bucket_name, expected_policy, shou
         return None
 
 
-def wait_payer_is_applied(module, s3_client, bucket_name, expected_payer, should_fail=True):
+def wait_payer_is_applied(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, bucket_name: str, expected_payer: str, should_fail: bool=True) -> str:
     for dummy in range(0, 12):
         try:
             requester_pays_status = get_bucket_request_payment(s3_client, bucket_name)
@@ -1013,7 +1018,7 @@ def wait_payer_is_applied(module, s3_client, bucket_name, expected_payer, should
         return None
 
 
-def wait_encryption_is_applied(module, s3_client, bucket_name, expected_encryption, should_fail=True, retries=12):
+def wait_encryption_is_applied(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, bucket_name: str, expected_encryption: Dict[str, str], should_fail: bool=True, retries: int=12) -> Dict[str, str]:
     for dummy in range(0, retries):
         try:
             encryption = get_bucket_encryption(s3_client, bucket_name)
@@ -1034,7 +1039,7 @@ def wait_encryption_is_applied(module, s3_client, bucket_name, expected_encrypti
     return encryption
 
 
-def wait_bucket_key_is_applied(module, s3_client, bucket_name, expected_encryption, should_fail=True, retries=12):
+def wait_bucket_key_is_applied(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, bucket_name: str, expected_encryption: bool, should_fail: bool=True, retries: int=12) -> bool:
     for dummy in range(0, retries):
         try:
             encryption = get_bucket_key(s3_client, bucket_name)
@@ -1054,7 +1059,7 @@ def wait_bucket_key_is_applied(module, s3_client, bucket_name, expected_encrypti
     return encryption
 
 
-def wait_versioning_is_applied(module, s3_client, bucket_name, required_versioning):
+def wait_versioning_is_applied(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, bucket_name: str, required_versioning: str) -> Dict[str, Union[Dict[str, Union[str, int, Dict[str, str]]], str]]:
     for dummy in range(0, 24):
         try:
             versioning_status = get_bucket_versioning(s3_client, bucket_name)
@@ -1071,7 +1076,7 @@ def wait_versioning_is_applied(module, s3_client, bucket_name, required_versioni
     )
 
 
-def wait_tags_are_applied(module, s3_client, bucket_name, expected_tags_dict):
+def wait_tags_are_applied(module: AnsibleAWSModule, s3_client: RetryingBotoClientWrapper, bucket_name: str, expected_tags_dict: Dict[str, str]) -> Dict[str, str]:
     for dummy in range(0, 12):
         try:
             current_tags_dict = get_current_bucket_tags_dict(s3_client, bucket_name)
@@ -1088,7 +1093,7 @@ def wait_tags_are_applied(module, s3_client, bucket_name, expected_tags_dict):
     )
 
 
-def get_current_bucket_tags_dict(s3_client, bucket_name):
+def get_current_bucket_tags_dict(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> Dict[str, str]:
     try:
         current_tags = s3_client.get_bucket_tagging(Bucket=bucket_name).get("TagSet")
     except is_boto3_error_code("NoSuchTagSet"):
@@ -1100,7 +1105,7 @@ def get_current_bucket_tags_dict(s3_client, bucket_name):
     return boto3_tag_list_to_ansible_dict(current_tags)
 
 
-def get_bucket_public_access(s3_client, bucket_name):
+def get_bucket_public_access(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> Dict[str, bool]:
     """
     Get current bucket public access block
     """
@@ -1111,7 +1116,7 @@ def get_bucket_public_access(s3_client, bucket_name):
         return {}
 
 
-def get_bucket_ownership_cntrl(s3_client, bucket_name):
+def get_bucket_ownership_cntrl(s3_client: RetryingBotoClientWrapper, bucket_name: str) -> Optional[str]:
     """
     Get current bucket public access block
     """
@@ -1140,7 +1145,7 @@ def paginated_versions_list(s3_client, **pagination_params):
         yield []
 
 
-def destroy_bucket(s3_client, module):
+def destroy_bucket(s3_client: RetryingBotoClientWrapper, module: AnsibleAWSModule) -> None:
     force = module.params.get("force")
     name = module.params.get("name")
     try:
@@ -1191,7 +1196,7 @@ def destroy_bucket(s3_client, module):
     module.exit_json(changed=True)
 
 
-def main():
+def main() -> None:
     argument_spec = dict(
         force=dict(default=False, type="bool"),
         policy=dict(type="json"),

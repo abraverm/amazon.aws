@@ -31,9 +31,10 @@
 from ansible.module_utils._text import to_native
 from ansible.module_utils._text import to_text
 from ansible.module_utils.six import string_types
+from typing import Dict, List
 
 
-def boto3_tag_list_to_ansible_dict(tags_list, tag_name_key_name=None, tag_value_key_name=None):
+def boto3_tag_list_to_ansible_dict(tags_list: List[Dict[str, str]], tag_name_key_name: None=None, tag_value_key_name: None=None) -> Dict[str, str]:
     """Convert a boto3 list of resource tags to a flat dict of key:value pairs
     Args:
         tags_list (list): List of dicts representing AWS tags.
@@ -69,7 +70,7 @@ def boto3_tag_list_to_ansible_dict(tags_list, tag_name_key_name=None, tag_value_
     raise ValueError(f"Couldn't find tag key (candidates {str(tag_candidates)}) in tag list {str(tags_list)}")
 
 
-def ansible_dict_to_boto3_tag_list(tags_dict, tag_name_key_name="Key", tag_value_key_name="Value"):
+def ansible_dict_to_boto3_tag_list(tags_dict: Dict[str, str], tag_name_key_name: str="Key", tag_value_key_name: str="Value") -> List[Dict[str, str]]:
     """Convert a flat dict of key:value pairs representing AWS resource tags to a boto3 list of dicts
 
     Note: booleans are converted to their Capitalized text form ("True" and "False"), this is
