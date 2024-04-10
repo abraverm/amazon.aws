@@ -20,6 +20,24 @@
                 ./ansible-locale-archive.patch
               ];
             }); 
+            monkeytype = prev.python3.pkgs.buildPythonPackage rec {
+              pname = "MonkeyType";
+              version = "23.3.0";
+
+              doCheck = false;
+              checkInputs = [];
+              propagatedBuildInputs = [prev.python3.pkgs.pip];
+
+              src = prev.python3.pkgs.fetchPypi {
+                inherit pname version;
+                sha256 = "8llds01Xzd295amQEXpQoi83PbuReioPqR/74H3+AxM=";
+              };
+              distPhase = "true";
+
+              patches = [
+                ./monkeytype.patch
+              ];
+            };
           })
         ];
       };
@@ -29,6 +47,7 @@
           micromamba
           just
           ansible-locale-archive
+          monkeytype
           zsh
           vscode
           black
