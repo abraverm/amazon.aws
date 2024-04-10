@@ -1,0 +1,29 @@
+diff --git a/monkeytype/encoding.py b/monkeytype/encoding.py
+index ef789b0..65d3517 100644
+--- a/monkeytype/encoding.py
++++ b/monkeytype/encoding.py
+@@ -113,6 +113,7 @@ def type_from_dict(d: TypeDict) -> type:
+     else:
+         typ = get_name_in_module(module, qualname)
+     if not (isinstance(typ, type) or is_any(typ) or is_generic(typ)):
++        return None
+         raise InvalidTypeError(
+             f"Attribute specified by '{qualname}' in module '{module}' "
+             f"is of type {type(typ)}, not type."
+diff --git a/monkeytype/util.py b/monkeytype/util.py
+index a7b27c4..16c4ceb 100644
+--- a/monkeytype/util.py
++++ b/monkeytype/util.py
+@@ -66,10 +66,11 @@ def get_name_in_module(
+         raise NameLookupError("No module named '%s'" % (module,))
+     walked = []
+     for part in qualname.split("."):
+-        walked.append(part)
+         try:
+             obj = attr_getter(obj, part)
++            walked.append(part)
+         except AttributeError:
++            continue
+             raise NameLookupError(
+                 "Module '%s' has no attribute '%s'" % (module, ".".join(walked))
+             )
