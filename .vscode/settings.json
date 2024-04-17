@@ -27,6 +27,7 @@
     "flake8.severity": {
         "E": "Warning"
     },
+    "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
 }
 
 // pyright reportAssignmentType=false, reportArgumentType=false

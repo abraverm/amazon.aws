@@ -49,7 +49,7 @@
           ansible-locale-archive
           monkeytype
           zsh
-          vscode
+          vscode-fhs
           black
         ]);
         runScript = "zsh";
