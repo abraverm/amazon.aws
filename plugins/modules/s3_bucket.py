@@ -166,6 +166,21 @@ options:
     type: bool
     default: false
     version_added: 6.0.0
+  object_lock_default_retention:
+    description:
+      - Default Object Lock configuration that will be applied by default to every new object placed in the specified bucket.
+    suboptions:
+      mode:
+        description: 'GOVERNANCE' or 'COMPLIANCE
+        type: str
+      days: 
+        description: The number of days that you want to specify for the default retention period. 
+        type: int
+      years:
+        description: The number of years that you want to specify for the default retention period.
+        type: int
+    type: dict
+    version_added: 7.6.0
 
 extends_documentation_fragment:
   - amazon.aws.common.modules
@@ -286,6 +301,14 @@ EXAMPLES = r"""
     name: mys3bucket
     state: present
     acl: public-read
+
+# Default Object Lock retention
+- amazon.aws.s3_bucket:
+    name: mys3bucket
+    state: present
+    object_lock_default_retention:
+      mode: governance
+      days: 1
 """
 
 RETURN = r"""
@@ -387,6 +410,7 @@ def create_or_update_bucket(s3_client, module):
     delete_object_ownership = module.params.get("delete_object_ownership")
     object_ownership = module.params.get("object_ownership")
     object_lock_enabled = module.params.get("object_lock_enabled")
+    object_lock_default_retention = module.params.get("object_lock_default_retention")
     acl = module.params.get("acl")
     # default to US Standard region,
     # note: module.region will also try to pull a default out of the boto3 configs.
@@ -732,6 +756,40 @@ def create_or_update_bucket(s3_client, module):
             if object_lock_enabled and not object_lock_status:
                 module.fail_json(msg="Enabling object lock for existing buckets is not supported")
 
+    # -- Object Lock Default Retention
+    try:
+        if object_lock_enabled:
+            object_lock_configuration_status = get_object_lock_configuration(s3_client, name)
+        else:
+            object_lock_configuration_status = {}
+    except is_boto3_error_code(["NotImplemented", "XNotImplemented"]) as e:
+        if object_lock_default_retention is not None:
+            module.fail_json(msg="Fetching bucket object lock default retention is not supported")
+    except is_boto3_error_code("AccessDenied") as e:  # pylint: disable=duplicate-except
+        if object_lock_default_retention is not None:
+            module.fail_json(msg="Permission denied fetching object lock default retention for bucket")
+    except (
+        botocore.exceptions.BotoCoreError,
+        botocore.exceptions.ClientError,
+    ) as e:  # pylint: disable=duplicate-except
+        module.fail_json_aws(e, msg="Failed to fetch bucket object lock default retention state")
+    else:
+        if not object_lock_default_retention and object_lock_configuration_status != {}:
+            module.fail_json(msg="Removing object lock default retention is not supported")
+        if object_lock_default_retention is not None:
+            conf = snake_dict_to_camel_dict(object_lock_default_retention, capitalize_first=True)
+            conf = {k: v for k, v in conf.items() if v} # remove keys with None value
+            try:
+                if object_lock_default_retention and object_lock_configuration_status != conf:                    
+                    put_object_lock_configuration(s3_client, name, conf)
+                    changed = True
+                    result["object_lock_default_retention"] = object_lock_default_retention
+                else:
+                    result["object_lock_default_retention"] = object_lock_default_retention
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as e:
+                module.fail_json_aws(e, msg="Failed to update bucket object lock default retention")
+
+
     # Module exit
     module.exit_json(changed=changed, name=name, **result)
 
@@ -767,6 +825,20 @@ def create_bucket(s3_client, bucket_name, location, object_lock_enabled=False):
         # We should never get here since we check the bucket presence before calling the create_or_update_bucket
         # method. However, the AWS Api sometimes fails to report bucket presence, so we catch this exception
         return False
+
+@AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
+def get_object_lock_configuration(s3_client, bucket_name):
+    result = s3_client.get_object_lock_configuration(Bucket=bucket_name)
+    return result.get("ObjectLockConfiguration",{}).get("Rule", {}).get("DefaultRetention", {})
+
+
+@AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
+def put_object_lock_configuration(s3_client, bucket_name, object_lock_default_retention):
+    conf = {
+        "ObjectLockEnabled": "Enabled",
+        "Rule": { "DefaultRetention": object_lock_default_retention }
+    }
+    s3_client.put_object_lock_configuration(Bucket=bucket_name, ObjectLockConfiguration=conf)
 
 
 @AWSRetry.exponential_backoff(max_delay=120, catch_extra_error_codes=["NoSuchBucket", "OperationAborted"])
@@ -1221,6 +1293,16 @@ def main():
         validate_bucket_name=dict(type="bool", default=True),
         dualstack=dict(default=False, type="bool"),
         object_lock_enabled=dict(type="bool"),
+        object_lock_default_retention=dict(
+            type="dict",
+            options=dict(
+                mode=dict(type="str", choices=["GOVERNANCE", ["COMPLIANCE"]], required=True),
+                years=dict(type="int"),
+                days=dict(type="int"),
+            ),
+            mutually_exclusive=["days", "years"],
+            required_one_of=[('days', 'years')],
+        )
     )
 
     required_by = dict(
@@ -1235,6 +1317,7 @@ def main():
 
     required_if = [
         ["ceph", True, ["endpoint_url"]],
+        ["object_lock_default_retention", True, ["object_lock_enabled"]]
     ]
 
     module = AnsibleAWSModule(
