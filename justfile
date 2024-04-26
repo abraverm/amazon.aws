@@ -1,6 +1,7 @@
 default:
     @{{just_executable()}} --list
 
+# run ansible unit tests for changed files only
 aws-full-unit-test:
   #!/usr/bin/env sh
   cd ansible_collections/amazon/aws
