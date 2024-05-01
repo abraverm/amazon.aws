@@ -5,6 +5,7 @@
 
 import string
 from urllib.parse import urlparse
+from typing import Any, Dict, Optional, Tuple
 
 try:
     from hashlib import md5
@@ -84,7 +85,7 @@ def calculate_etag_content(module, content, etag, s3, bucket, obj, version=None)
         return f'"{md5(content).hexdigest()}"'
 
 
-def validate_bucket_name(name):
+def validate_bucket_name(name: Optional[str]) -> None:
     # See: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     if len(name) < 3:
         return "the length of an S3 bucket must be at least 3 characters"
@@ -101,7 +102,7 @@ def validate_bucket_name(name):
 
 
 # Spot special case of fakes3.
-def is_fakes3(url):
+def is_fakes3(url: None) -> bool:
     """Return True if endpoint_url has scheme fakes3://"""
     result = False
     if url is not None:
@@ -127,7 +128,7 @@ def parse_ceph_endpoint(url):
     return {"endpoint": url, "use_ssl": use_ssl}
 
 
-def parse_s3_endpoint(options):
+def parse_s3_endpoint(options: Dict[str, Any]) -> Tuple[bool, Dict[str, None]]:
     endpoint_url = options.get("endpoint_url")
     if options.get("ceph"):
         return False, parse_ceph_endpoint(endpoint_url)
@@ -136,7 +137,7 @@ def parse_s3_endpoint(options):
     return True, {"endpoint": endpoint_url}
 
 
-def s3_extra_params(options, sigv4=False):
+def s3_extra_params(options: Dict[str, Any], sigv4: bool=False) -> Dict[str, None]:
     aws, extra_params = parse_s3_endpoint(options)
     endpoint = extra_params["endpoint"]
     if not aws:

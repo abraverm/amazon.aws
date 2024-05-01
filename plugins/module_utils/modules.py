@@ -41,9 +41,12 @@ import logging
 import os
 import re
 import traceback
+from ansible_collections.amazon.aws.plugins.module_utils.retries import RetryingBotoClientWrapper
+from botocore.exceptions import ClientError
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 try:
-    from cStringIO import StringIO
+    from cStringIO import StringIO # pyright: ignore
 except ImportError:
     # Python 3
     from io import StringIO
@@ -82,7 +85,7 @@ class AnsibleAWSModule:
 
     default_settings = {"default_args": True, "check_boto3": True, "auto_retry": True, "module_class": AnsibleModule}
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         local_settings = {}
         for key, default_value in AnsibleAWSModule.default_settings.items():
             try:
@@ -150,10 +153,10 @@ class AnsibleAWSModule:
             self.logger.addHandler(logging.StreamHandler(self._botocore_endpoint_log_stream))
 
     @property
-    def params(self):
+    def params(self) -> Dict[str, Any]:
         return self._module.params
 
-    def _get_resource_action_list(self):
+    def _get_resource_action_list(self) -> List[str]:
         actions = []
         for ln in self._botocore_endpoint_log_stream.getvalue().split("\n"):
             ln = ln.strip()
@@ -166,12 +169,12 @@ class AnsibleAWSModule:
                 actions.append(f"{resource}:{operation_request}")
         return list(set(actions))
 
-    def exit_json(self, *args, **kwargs):
+    def exit_json(self, *args, **kwargs) -> None:
         if self.params.get("debug_botocore_endpoint_logs"):
             kwargs["resource_actions"] = self._get_resource_action_list()
         return self._module.exit_json(*args, **kwargs)
 
-    def fail_json(self, *args, **kwargs):
+    def fail_json(self, *args, **kwargs) -> None:
         if self.params.get("debug_botocore_endpoint_logs"):
             kwargs["resource_actions"] = self._get_resource_action_list()
         return self._module.fail_json(*args, **kwargs)
@@ -191,8 +194,8 @@ class AnsibleAWSModule:
     def md5(self, *args, **kwargs):
         return self._module.md5(*args, **kwargs)
 
-    def client(self, service, retry_decorator=None, **extra_params):
-        region, endpoint_url, aws_connect_kwargs = get_aws_connection_info(self)
+    def client(self, service: str, retry_decorator: Optional[Callable]=None, **extra_params) -> RetryingBotoClientWrapper:
+        region, endpoint_url, aws_connect_kwargs = get_aws_connection_info(self, boto3=True)
         kw_args = dict(region=region, endpoint=endpoint_url, **aws_connect_kwargs)
         kw_args.update(extra_params)
         conn = boto3_conn(self, conn_type="client", resource=service, **kw_args)
@@ -205,10 +208,10 @@ class AnsibleAWSModule:
         return boto3_conn(self, conn_type="resource", resource=service, **kw_args)
 
     @property
-    def region(self):
-        return get_aws_region(self)
+    def region(self) -> str:
+        return get_aws_region(self, True)
 
-    def fail_json_aws(self, exception, msg=None, **kwargs):
+    def fail_json_aws(self, exception: ClientError, msg: Optional[str]=None, **kwargs) -> None:
         """call fail_json with processed exception
 
         function for converting exceptions thrown by AWS SDK modules,
@@ -248,7 +251,7 @@ class AnsibleAWSModule:
             self.fail_json_aws(exception.exception, msg=exception.message)
         self.fail_json(msg=exception.message)
 
-    def _gather_versions(self):
+    def _gather_versions(self) -> Dict[str, str]:
         """Gather AWS SDK (boto3 and botocore) dependency versions
 
         Returns {'boto3_version': str, 'botocore_version': str}
@@ -301,7 +304,7 @@ class AnsibleAWSModule:
         return botocore_at_least(desired)
 
 
-def _aws_common_argument_spec():
+def _aws_common_argument_spec() -> Dict[str, Dict[str, Union[List[str], List[Dict[str, str]], Tuple[Callable, List[str]], bool, str]]]:
     """
     This does not include 'region' as some AWS APIs don't require a
     region.  However, it's not recommended to do this as it means module_defaults
@@ -365,7 +368,7 @@ def _aws_common_argument_spec():
     )
 
 
-def aws_argument_spec():
+def aws_argument_spec() -> Dict[str, Dict[str, Union[List[str], List[Dict[str, str]], Tuple[Callable, List[str]], bool, str]]]:
     """
     Returns a dictionary containing the argument_spec common to all AWS modules.
     """
