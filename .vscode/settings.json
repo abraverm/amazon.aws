@@ -28,6 +28,8 @@
         "E": "Warning"
     },
     "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
+    "black-formatter.importStrategy": "fromEnvironment",
+    "black-formatter.cwd": "${fileDirname}",
 }
 
 // pyright reportAssignmentType=false, reportArgumentType=false

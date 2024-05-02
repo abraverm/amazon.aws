@@ -27,5 +27,5 @@ integration-test target:
   #!/usr/bin/env bash
   set -x
   rm -rf ~/.aws
-  exclude="($(ls plugins/modules/*.py | grep -v {{target}} | sed -e 's/plugins\/modules\///' -e 's/\.py//' | tr '\n' '|' | sed 's/|$//'))"
-  /usr/bin/ansible-test integration --local --exclude $exclude --python-interpreter $PWD/.mamba/envs/amazon_aws/bin/python3.11 -vv
+  exclude="$(ls tests/integration/targets | grep -v {{target}} | grep -v setup | tr '\n' '\t'| sed 's/\t$//' | sed 's/\t/ --exclude /g')"
+  /usr/bin/ansible-test integration --local --exclude $exclude --python-interpreter $PWD/.mamba/envs/amazon_aws/bin/python3.11 -v
